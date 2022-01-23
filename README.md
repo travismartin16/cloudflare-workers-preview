@@ -92,7 +92,7 @@ The preview website urls will be:
 
 ### Teardown
 
-When a pull request is closed and teardown is set to 'true', then the surge instance will be destroyed.
+When a pull request is closed and teardown is set to 'true', then the workers script will be destroyed.
 
 ```yaml
 name: Workers PR Preview
