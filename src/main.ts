@@ -19,7 +19,7 @@ async function main() {
   );
   failOnErrorGlobal = failOnError;
   core.debug(
-    `failOnErrorGlobal: ${typeof failOnErrorGlobal} + ${failOnErrorGlobal.toString()}`
+    `failOnErrorGlobal: ${typeof failOnErrorGlobal} + ${failOnErrorGlobal.toString()}`,
   );
   const octokit = github.getOctokit(token);
   let prNumber: number | undefined;
@@ -116,7 +116,7 @@ ${getCommentFooter()}
   // 尝试获取 check_run_id，逻辑不是很严谨
   let checkRunId;
   if (data?.check_runs?.length >= 0) {
-    const checkRun = data?.check_runs?.find((item) => item.name === job);
+    const checkRun = data?.check_runs?.find(item => item.name === job);
     checkRunId = checkRun?.id;
   }
 
@@ -143,7 +143,7 @@ ${formatImage({
   imageUrl:
     'https://user-images.githubusercontent.com/507615/98094112-d838f700-1ec3-11eb-8530-381c2276b80e.png',
 })}
-        
+
 ${getCommentFooter()}
       `);
     } catch (err) {
@@ -203,6 +203,6 @@ ${getCommentFooter()}
 }
 
 // eslint-disable-next-line github/no-then
-main().catch((err) => {
+main().catch(err => {
   fail?.(err);
 });

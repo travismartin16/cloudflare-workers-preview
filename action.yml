@@ -1,10 +1,10 @@
-name: '🔂 Surge PR Preview'
-description: 'Preview website in surge.sh for every pull request'
-author: 'afc163'
+name: 'Workers Preview'
+description: 'Cloudflare workers preview for every pull requests'
+author: 'shidil'
 inputs:
-  surge_token:
-    description: 'surge.sh token'
-    default: '6973bdb764f0d5fd07c910de27e2d7d0'
+  cf_token:
+    description: 'Cloudflare token (Edit Workers Scope)'
+    required: true
   github_token:
     description: 'github token'
     required: true
@@ -14,11 +14,16 @@ inputs:
       npm install
       npm run build
     required: false
-  dist:
-    description: 'dist folder to deploy'
-    default: 'public'
+  project_path:
     required: false
+    default: '.'
+    description: 'directory of the wrangler project'
+  # working_directory:
+  #   description: 'working directory of wrangler project'
+  #   default: '.'
+  #   required: false
   failOnError:
+    required: false
     description: 'Set `failed` if a deployment throws error'
   teardown:
     description: 'Determines if the preview instance will be torn down on PR close'
@@ -32,4 +37,4 @@ runs:
   main: 'dist/index.js'
 branding:
   icon: 'monitor'
-  color: 'yellow'
+  color: 'purple'
