@@ -24,7 +24,7 @@ function findPreviousComment(octokit, repo, issue_number, header) {
     return __awaiter(this, void 0, void 0, function* () {
         const { data: comments } = yield octokit.rest.issues.listComments(Object.assign(Object.assign({}, repo), { issue_number }));
         const h = headerComment(header);
-        return comments.find((comment) => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.includes(h); });
+        return comments.find(comment => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.includes(h); });
     });
 }
 exports.findPreviousComment = findPreviousComment;
@@ -133,29 +133,46 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getCommentFooter = exports.formatImage = exports.execSurgeCommand = void 0;
+exports.getCommentFooter = exports.formatImage = exports.wranglerTeardown = exports.wranglerPublish = exports.execNpxCommand = void 0;
 const exec_1 = __nccwpck_require__(1514);
-const execSurgeCommand = ({ command, }) => __awaiter(void 0, void 0, void 0, function* () {
+const execNpxCommand = ({ command, options, }) => __awaiter(void 0, void 0, void 0, function* () {
     let myOutput = '';
-    const options = {
-        listeners: {
+    const exitCode = yield exec_1.exec(`npx`, ['-y', ...command], Object.assign({ listeners: {
             stdout: (stdoutData) => {
                 myOutput += stdoutData.toString();
             },
-        },
-    };
-    yield exec_1.exec(`npx`, command, options);
-    if (myOutput && !myOutput.includes('Success')) {
+        } }, (options || {})));
+    if (exitCode > 0 && myOutput && !myOutput.includes('Success')) {
         throw new Error(myOutput);
     }
 });
-exports.execSurgeCommand = execSurgeCommand;
+exports.execNpxCommand = execNpxCommand;
+const wranglerPublish = (workingDirectory, cfApiToken, environment) => __awaiter(void 0, void 0, void 0, function* () {
+    const wrangler = '@cloudflare/wrangler';
+    yield exports.execNpxCommand({
+        command: [wrangler, 'publish', '-e', environment],
+        options: {
+            cwd: workingDirectory,
+            env: {
+                CF_API_TOKEN: cfApiToken,
+            },
+        },
+    });
+});
+exports.wranglerPublish = wranglerPublish;
+const wranglerTeardown = (cloudflareAccount, cfApiToken, environment) => __awaiter(void 0, void 0, void 0, function* () {
+    const api = 'https://api.cloudflare.com/client/v4/accounts';
+    const url = `${api}/${cloudflareAccount}/workers/scripts/${environment}`;
+    const authHeader = `Authorization: Bearer ${cfApiToken}`;
+    return yield exec_1.exec('curl', ['-X', 'DELETE', url, '-H', authHeader]);
+});
+exports.wranglerTeardown = wranglerTeardown;
 const formatImage = ({ buildingLogUrl, imageUrl, }) => {
     return `<a href="${buildingLogUrl}"><img width="300" src="${imageUrl}"></a>`;
 };
 exports.formatImage = formatImage;
 const getCommentFooter = () => {
-    return '<sub>🤖 By [surge-preview](https://github.com/afc163/surge-preview)</sub>';
+    return '<sub>[cloudflare-workers-preview](https://github.com/shidil/cloudflare-workers-preview)</sub>';
 };
 exports.getCommentFooter = getCommentFooter;
 
@@ -197,41 +214,47 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const github = __importStar(__nccwpck_require__(5438));
 const exec_1 = __nccwpck_require__(1514);
+const github = __importStar(__nccwpck_require__(5438));
 const commentToPullRequest_1 = __nccwpck_require__(1393);
 const helpers_1 = __nccwpck_require__(5008);
 let failOnErrorGlobal = false;
 let fail;
+function getCommitSha(payload) {
+    var _a, _b, _c;
+    return (payload.after ||
+        ((_b = (_a = payload === null || payload === void 0 ? void 0 : payload.pull_request) === null || _a === void 0 ? void 0 : _a.head) === null || _b === void 0 ? void 0 : _b.sha) ||
+        ((_c = payload === null || payload === void 0 ? void 0 : payload.workflow_run) === null || _c === void 0 ? void 0 : _c.head_sha));
+}
 function main() {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
-        const surgeToken = core.getInput('surge_token') || '6973bdb764f0d5fd07c910de27e2d7d0';
-        const token = core.getInput('github_token', { required: true });
-        const dist = core.getInput('dist');
+        const cloudflareToken = core.getInput('cf_token', { required: true });
+        const cloudflareAccount = core.getInput('cf_account', { required: true });
+        const githubToken = core.getInput('github_token', { required: true });
+        const domainName = core.getInput('domain', { required: true });
+        const projectPath = core.getInput('project_path');
         const teardown = ((_a = core.getInput('teardown')) === null || _a === void 0 ? void 0 : _a.toString().toLowerCase()) === 'true';
         const failOnError = !!(core.getInput('failOnError') || process.env.FAIL_ON__ERROR);
         failOnErrorGlobal = failOnError;
         core.debug(`failOnErrorGlobal: ${typeof failOnErrorGlobal} + ${failOnErrorGlobal.toString()}`);
-        const octokit = github.getOctokit(token);
-        let prNumber;
+        const { job, payload, repo } = github.context;
+        const gitCommitSha = getCommitSha(payload);
+        const isFromForkedRepo = ((_b = payload.pull_request) === null || _b === void 0 ? void 0 : _b.owner) === repo.owner;
         core.debug('github.context');
         core.debug(JSON.stringify(github.context, null, 2));
-        const { job, payload } = github.context;
+        core.debug(JSON.stringify(repo, null, 2));
         core.debug(`payload.after: ${payload.after}`);
         core.debug(`payload.after: ${payload.pull_request}`);
-        const gitCommitSha = payload.after ||
-            ((_c = (_b = payload === null || payload === void 0 ? void 0 : payload.pull_request) === null || _b === void 0 ? void 0 : _b.head) === null || _c === void 0 ? void 0 : _c.sha) ||
-            ((_d = payload === null || payload === void 0 ? void 0 : payload.workflow_run) === null || _d === void 0 ? void 0 : _d.head_sha);
-        core.debug(JSON.stringify(github.context.repo, null, 2));
-        const fromForkedRepo = ((_e = payload.pull_request) === null || _e === void 0 ? void 0 : _e.owner) === github.context.repo.owner;
+        let prNumber;
+        const octokit = github.getOctokit(githubToken);
         if (payload.number && payload.pull_request) {
             prNumber = payload.number;
         }
         else {
             const result = yield octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
+                owner: repo.owner,
+                repo: repo.repo,
                 commit_sha: gitCommitSha,
             });
             const pr = result.data.length > 0 && result.data[0];
@@ -244,12 +267,12 @@ function main() {
             return;
         }
         core.info(`Find PR number: ${prNumber}`);
-        const commentIfNotForkedRepo = (message) => {
+        const commentIfNotForkedRepo = (message) => __awaiter(this, void 0, void 0, function* () {
             // if it is forked repo, don't comment
-            if (fromForkedRepo) {
+            if (isFromForkedRepo) {
                 return;
             }
-            commentToPullRequest_1.comment({
+            yield commentToPullRequest_1.comment({
                 repo: github.context.repo,
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 number: prNumber,
@@ -257,11 +280,11 @@ function main() {
                 octokit,
                 header: job,
             });
-        };
-        fail = (err) => {
+        });
+        fail = (err) => __awaiter(this, void 0, void 0, function* () {
             core.info('error message:');
             core.info(JSON.stringify(err, null, 2));
-            commentIfNotForkedRepo(`
+            yield commentIfNotForkedRepo(`
 😭 Deploy PR Preview ${gitCommitSha} failed. [Build logs](https://github.com/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/${github.context.runId})
 
 ${helpers_1.formatImage({
@@ -274,10 +297,9 @@ ${helpers_1.getCommentFooter()}
             if (failOnError) {
                 core.setFailed(err.message);
             }
-        };
-        const repoOwner = github.context.repo.owner.replace(/\./g, '-');
-        const repoName = github.context.repo.repo.replace(/\./g, '-');
-        const url = `${repoOwner}-${repoName}-${job}-pr-${prNumber}.surge.sh`;
+        });
+        const environment = `${job}-pr-${prNumber}`;
+        const url = `${environment}.${domainName}`;
         core.setOutput('preview_url', url);
         let data;
         try {
@@ -293,10 +315,9 @@ ${helpers_1.getCommentFooter()}
             return;
         }
         core.debug(JSON.stringify(data === null || data === void 0 ? void 0 : data.check_runs, null, 2));
-        // 尝试获取 check_run_id，逻辑不是很严谨
         let checkRunId;
-        if (((_f = data === null || data === void 0 ? void 0 : data.check_runs) === null || _f === void 0 ? void 0 : _f.length) >= 0) {
-            const checkRun = (_g = data === null || data === void 0 ? void 0 : data.check_runs) === null || _g === void 0 ? void 0 : _g.find((item) => item.name === job);
+        if (((_c = data === null || data === void 0 ? void 0 : data.check_runs) === null || _c === void 0 ? void 0 : _c.length) >= 0) {
+            const checkRun = (_d = data === null || data === void 0 ? void 0 : data.check_runs) === null || _d === void 0 ? void 0 : _d.find(item => item.name === job);
             checkRunId = checkRun === null || checkRun === void 0 ? void 0 : checkRun.id;
         }
         const buildingLogUrl = checkRunId
@@ -307,18 +328,16 @@ ${helpers_1.getCommentFooter()}
         if (teardown && payload.action === 'closed') {
             try {
                 core.info(`Teardown: ${url}`);
-                core.setSecret(surgeToken);
-                yield helpers_1.execSurgeCommand({
-                    command: ['surge', 'teardown', url, `--token`, surgeToken],
-                });
-                return commentIfNotForkedRepo(`
+                core.setSecret(cloudflareToken);
+                yield helpers_1.wranglerTeardown(cloudflareAccount, cloudflareToken, environment);
+                return yield commentIfNotForkedRepo(`
 :recycle: [PR Preview](https://${url}) ${gitCommitSha} has been successfully destroyed since this PR has been closed.
 
 ${helpers_1.formatImage({
                     buildingLogUrl,
                     imageUrl: 'https://user-images.githubusercontent.com/507615/98094112-d838f700-1ec3-11eb-8530-381c2276b80e.png',
                 })}
-        
+
 ${helpers_1.getCommentFooter()}
       `);
             }
@@ -326,8 +345,8 @@ ${helpers_1.getCommentFooter()}
                 return fail === null || fail === void 0 ? void 0 : fail(err);
             }
         }
-        commentIfNotForkedRepo(`
-⚡️ Deploying PR Preview ${gitCommitSha} to [surge.sh](https://${url}) ... [Build logs](${buildingLogUrl})
+        yield commentIfNotForkedRepo(`
+⚡️ Deploying PR Preview ${gitCommitSha} to [workers.dev](https://${url}) ... [Build logs](${buildingLogUrl})
 
 ${helpers_1.formatImage({
             buildingLogUrl,
@@ -352,11 +371,9 @@ ${helpers_1.getCommentFooter()}
             const duration = (Date.now() - startTime) / 1000;
             core.info(`Build time: ${duration} seconds`);
             core.info(`Deploy to ${url}`);
-            core.setSecret(surgeToken);
-            yield helpers_1.execSurgeCommand({
-                command: ['surge', `./${dist}`, url, `--token`, surgeToken],
-            });
-            commentIfNotForkedRepo(`
+            core.setSecret(cloudflareToken);
+            yield helpers_1.wranglerPublish(projectPath, cloudflareToken, environment);
+            yield commentIfNotForkedRepo(`
 🎊 PR Preview ${gitCommitSha} has been successfully built and deployed to https://${url}
 
 :clock1: Build time: **${duration}s**
@@ -375,7 +392,7 @@ ${helpers_1.getCommentFooter()}
     });
 }
 // eslint-disable-next-line github/no-then
-main().catch((err) => {
+main().catch(err => {
     fail === null || fail === void 0 ? void 0 : fail(err);
 });
 
