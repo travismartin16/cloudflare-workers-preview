@@ -7,7 +7,8 @@
 
 A GitHub action that previews cloudflare workers in [workers.dev](https://workers.dev/) for your pull requests.
 
-<img width="800" alt="image" src="https://user-images.githubusercontent.com/507615/90243810-2230b480-de62-11ea-9a2c-9e869a2067dd.png">
+<img width="800" alt="image" src="https://user-images.githubusercontent.com/4880359/150688614-3759ccc6-ac85-4753-a455-c8a6ae9616b1.png">
+
 
 ### Pros
 
