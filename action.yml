@@ -16,12 +16,7 @@ inputs:
     required: false
   project_path:
     required: false
-    default: '.'
     description: 'directory of the wrangler project'
-  # working_directory:
-  #   description: 'working directory of wrangler project'
-  #   default: '.'
-  #   required: false
   failOnError:
     required: false
     description: 'Set `failed` if a deployment throws error'

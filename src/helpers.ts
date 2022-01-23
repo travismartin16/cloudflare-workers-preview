@@ -1,19 +1,22 @@
-import { exec } from '@actions/exec';
+import { exec, ExecOptions } from '@actions/exec';
 
 interface NPXCommandOptions {
   command: string[];
+  workingDirectory?: string;
 }
 
 export const execNpxCommand = async ({
   command,
+  workingDirectory,
 }: NPXCommandOptions): Promise<void> => {
   let myOutput = '';
-  const options = {
+  const options: ExecOptions = {
     listeners: {
       stdout: (stdoutData: Buffer) => {
         myOutput += stdoutData.toString();
       },
     },
+    cwd: workingDirectory,
   };
   await exec(`npx`, ['-y', ...command], options);
   if (myOutput && !myOutput.includes('Success')) {
