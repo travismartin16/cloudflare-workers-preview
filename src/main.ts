@@ -3,46 +3,57 @@ import * as github from '@actions/github';
 import { exec } from '@actions/exec';
 import { comment } from './commentToPullRequest';
 import { execSurgeCommand, formatImage, getCommentFooter } from './helpers';
+import type { WebhookPayload } from '@actions/github/lib/interfaces';
 
 let failOnErrorGlobal = false;
 let fail: (err: Error) => void;
 
+type ActionsPayload = WebhookPayload;
+
+function getCommitSha(payload: ActionsPayload): string {
+  return (
+    payload.after ||
+    payload?.pull_request?.head?.sha ||
+    payload?.workflow_run?.head_sha
+  );
+}
+
 async function main() {
-  const surgeToken =
-    core.getInput('surge_token') || '6973bdb764f0d5fd07c910de27e2d7d0';
-  const token = core.getInput('github_token', { required: true });
-  const dist = core.getInput('dist');
+  const cloudflareToken = core.getInput('cf_token', { required: true });
+  const githubToken = core.getInput('github_token', { required: true });
+  const projectPath = core.getInput('project_path');
+
   const teardown =
     core.getInput('teardown')?.toString().toLowerCase() === 'true';
   const failOnError = !!(
     core.getInput('failOnError') || process.env.FAIL_ON__ERROR
   );
+
   failOnErrorGlobal = failOnError;
   core.debug(
     `failOnErrorGlobal: ${typeof failOnErrorGlobal} + ${failOnErrorGlobal.toString()}`,
   );
-  const octokit = github.getOctokit(token);
-  let prNumber: number | undefined;
+
+  const { job, payload, repo } = github.context;
+  const gitCommitSha = getCommitSha(payload);
+  const isFromForkedRepo = payload.pull_request?.owner === repo.owner;
+
   core.debug('github.context');
   core.debug(JSON.stringify(github.context, null, 2));
-  const { job, payload } = github.context;
+  core.debug(JSON.stringify(repo, null, 2));
   core.debug(`payload.after: ${payload.after}`);
   core.debug(`payload.after: ${payload.pull_request}`);
-  const gitCommitSha =
-    payload.after ||
-    payload?.pull_request?.head?.sha ||
-    payload?.workflow_run?.head_sha;
-  core.debug(JSON.stringify(github.context.repo, null, 2));
-  const fromForkedRepo =
-    payload.pull_request?.owner === github.context.repo.owner;
+
+  let prNumber: number | undefined;
+  const octokit = github.getOctokit(githubToken);
 
   if (payload.number && payload.pull_request) {
     prNumber = payload.number;
   } else {
     const result =
       await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
+        owner: repo.owner,
+        repo: repo.repo,
         commit_sha: gitCommitSha,
       });
     const pr = result.data.length > 0 && result.data[0];
@@ -58,7 +69,7 @@ async function main() {
 
   const commentIfNotForkedRepo = (message: string) => {
     // if it is forked repo, don't comment
-    if (fromForkedRepo) {
+    if (isFromForkedRepo) {
       return;
     }
     comment({
@@ -107,13 +118,12 @@ ${getCommentFooter()}
     });
     data = result.data;
   } catch (err) {
-    fail(err);
+    fail(err as Error);
     return;
   }
 
   core.debug(JSON.stringify(data?.check_runs, null, 2));
 
-  // 尝试获取 check_run_id，逻辑不是很严谨
   let checkRunId;
   if (data?.check_runs?.length >= 0) {
     const checkRun = data?.check_runs?.find(item => item.name === job);
@@ -130,9 +140,9 @@ ${getCommentFooter()}
   if (teardown && payload.action === 'closed') {
     try {
       core.info(`Teardown: ${url}`);
-      core.setSecret(surgeToken);
+      core.setSecret(cloudflareToken);
       await execSurgeCommand({
-        command: ['surge', 'teardown', url, `--token`, surgeToken],
+        command: ['surge', 'teardown', url, `--token`, cloudflareToken],
       });
 
       return commentIfNotForkedRepo(`
@@ -147,7 +157,7 @@ ${formatImage({
 ${getCommentFooter()}
       `);
     } catch (err) {
-      return fail?.(err);
+      return fail?.(err as Error);
     }
   }
 
@@ -178,10 +188,10 @@ ${getCommentFooter()}
     const duration = (Date.now() - startTime) / 1000;
     core.info(`Build time: ${duration} seconds`);
     core.info(`Deploy to ${url}`);
-    core.setSecret(surgeToken);
+    core.setSecret(cloudflareToken);
 
     await execSurgeCommand({
-      command: ['surge', `./${dist}`, url, `--token`, surgeToken],
+      command: ['surge', `./${projectPath}`, url, `--token`, cloudflareToken],
     });
 
     commentIfNotForkedRepo(`
@@ -198,7 +208,7 @@ ${formatImage({
 ${getCommentFooter()}
     `);
   } catch (err) {
-    fail?.(err);
+    fail?.(err as Error);
   }
 }
 
