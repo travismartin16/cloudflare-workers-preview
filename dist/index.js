@@ -149,6 +149,12 @@ const execNpxCommand = ({ command, options, }) => __awaiter(void 0, void 0, void
 exports.execNpxCommand = execNpxCommand;
 const wranglerPublish = (workingDirectory, environment, cloudflareAccount, cfApiToken) => __awaiter(void 0, void 0, void 0, function* () {
     const wrangler = '@cloudflare/wrangler';
+    yield exec_1.exec('pwd', [], {
+        cwd: workingDirectory,
+    });
+    yield exec_1.exec('cat', ['./wrangler.toml'], {
+        cwd: workingDirectory,
+    });
     yield exec_1.exec('echo', [`'[env.${environment}]'`, '>>', './wrangler.toml'], {
         cwd: workingDirectory,
     });
