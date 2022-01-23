@@ -1,5 +1,5 @@
 {
-  "name": "surge-preview",
+  "name": "cloudflare-workers-preview",
   "version": "1.6.0",
   "private": true,
   "description": "Preview website in surge.sh for every pull request",
@@ -12,13 +12,13 @@
     "lint": "eslint src/**/*.ts",
     "package": "ncc build --source-map",
     "test": "jest --passWithNoTests",
-    "pretty-quick": "pretty-quick",
+    "pretty-quick": "pretty-quick --staged",
     "all": "npm run build && npm run format && npm run lint && npm run package && npm test",
     "prepare": "husky install"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/afc163/surge-preview.git"
+    "url": "git+https://github.com/shidil/cloudflare-workers-preview.git"
   },
   "keywords": [
     "actions",
@@ -27,7 +27,13 @@
     "pull-requests",
     "deploy"
   ],
-  "author": "afc163 <afc163@gmail.com>",
+  "author": "Shidil Eringa <shidil@live.com>",
+  "contributors": [
+    {
+      "name": "afc163",
+      "email": "afc163@gmail.com"
+    }
+  ],
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.2.6",
