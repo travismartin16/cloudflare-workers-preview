@@ -25,8 +25,9 @@ export const execNpxCommand = async ({
 
 export const wranglerPublish = async (
   workingDirectory: string,
-  cfApiToken: string,
   environment: string,
+  cloudflareAccount: string,
+  cfApiToken: string,
 ) => {
   const wrangler = '@cloudflare/wrangler';
   await execNpxCommand({
@@ -35,6 +36,7 @@ export const wranglerPublish = async (
       cwd: workingDirectory,
       env: {
         CF_API_TOKEN: cfApiToken,
+        CF_ACCOUNT_ID: cloudflareAccount,
       },
     },
   });

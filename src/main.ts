@@ -195,7 +195,12 @@ ${getCommentFooter()}
     core.info(`Deploy to ${url}`);
     core.setSecret(cloudflareToken);
 
-    await wranglerPublish(projectPath, cloudflareToken, environment);
+    await wranglerPublish(
+      projectPath,
+      environment,
+      cloudflareAccount,
+      cloudflareToken,
+    );
 
     await commentIfNotForkedRepo(`
 🎊 PR Preview ${gitCommitSha} has been successfully built and deployed to https://${url}
