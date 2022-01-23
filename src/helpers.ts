@@ -1,12 +1,12 @@
 import { exec } from '@actions/exec';
 
-interface ExecSurgeCommandOptions {
+interface NPXCommandOptions {
   command: string[];
 }
 
-export const execSurgeCommand = async ({
+export const execNpxCommand = async ({
   command,
-}: ExecSurgeCommandOptions): Promise<void> => {
+}: NPXCommandOptions): Promise<void> => {
   let myOutput = '';
   const options = {
     listeners: {
@@ -15,7 +15,7 @@ export const execSurgeCommand = async ({
       },
     },
   };
-  await exec(`npx`, command, options);
+  await exec(`npx`, ['-y', ...command], options);
   if (myOutput && !myOutput.includes('Success')) {
     throw new Error(myOutput);
   }
@@ -32,5 +32,5 @@ export const formatImage = ({
 };
 
 export const getCommentFooter = () => {
-  return '<sub>🤖 By [surge-preview](https://github.com/afc163/surge-preview)</sub>';
+  return '<sub>[cloudflare-workers-preview](https://github.com/shidil/cloudflare-workers-preview)</sub>';
 };
