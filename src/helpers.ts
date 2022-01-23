@@ -2,26 +2,54 @@ import { exec, ExecOptions } from '@actions/exec';
 
 interface NPXCommandOptions {
   command: string[];
-  workingDirectory?: string;
+  options?: ExecOptions;
 }
 
 export const execNpxCommand = async ({
   command,
-  workingDirectory,
+  options,
 }: NPXCommandOptions): Promise<void> => {
   let myOutput = '';
-  const options: ExecOptions = {
+  const exitCode = await exec(`npx`, ['-y', ...command], {
     listeners: {
       stdout: (stdoutData: Buffer) => {
         myOutput += stdoutData.toString();
       },
     },
-    cwd: workingDirectory,
-  };
-  await exec(`npx`, ['-y', ...command], options);
-  if (myOutput && !myOutput.includes('Success')) {
+    ...(options || {}),
+  });
+  if (exitCode > 0 && myOutput && !myOutput.includes('Success')) {
     throw new Error(myOutput);
   }
+};
+
+export const wranglerPublish = async (
+  workingDirectory: string,
+  cfApiToken: string,
+  environment: string,
+) => {
+  const wrangler = '@cloudflare/wrangler';
+  await execNpxCommand({
+    command: [wrangler, 'publish', '-e', environment],
+    options: {
+      cwd: workingDirectory,
+      env: {
+        CF_API_TOKEN: cfApiToken,
+      },
+    },
+  });
+};
+
+export const wranglerTeardown = async (
+  cloudflareAccount: string,
+  cfApiToken: string,
+  environment: string,
+) => {
+  const api = 'https://api.cloudflare.com/client/v4/accounts';
+  const url = `${api}/${cloudflareAccount}/workers/scripts/${environment}`;
+  const authHeader = `Authorization: Bearer ${cfApiToken}`;
+
+  return await exec('curl', ['-X', 'DELETE', url, '-H', authHeader]);
 };
 
 export const formatImage = ({

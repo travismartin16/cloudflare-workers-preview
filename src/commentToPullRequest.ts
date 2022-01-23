@@ -51,6 +51,6 @@ export async function comment({
       await createComment(octokit, repo, number, body, prefixedHeader);
     }
   } catch (err) {
-    core.setFailed(err.message);
+    core.setFailed((err as { message: string }).message);
   }
 }

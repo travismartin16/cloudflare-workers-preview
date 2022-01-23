@@ -5,6 +5,12 @@ inputs:
   cf_token:
     description: 'Cloudflare token (Edit Workers Scope)'
     required: true
+  cf_account:
+    description: 'Cloudflare account id'
+    required: true
+  domain:
+    required: true
+    description: 'eg.workers.dev'
   github_token:
     description: 'github token'
     required: true

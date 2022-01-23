@@ -1,9 +1,14 @@
 import * as core from '@actions/core';
-import * as github from '@actions/github';
 import { exec } from '@actions/exec';
-import { comment } from './commentToPullRequest';
-import { execSurgeCommand, formatImage, getCommentFooter } from './helpers';
+import * as github from '@actions/github';
 import type { WebhookPayload } from '@actions/github/lib/interfaces';
+import { comment } from './commentToPullRequest';
+import {
+  formatImage,
+  getCommentFooter,
+  wranglerPublish,
+  wranglerTeardown,
+} from './helpers';
 
 let failOnErrorGlobal = false;
 let fail: (err: Error) => void;
@@ -20,7 +25,9 @@ function getCommitSha(payload: ActionsPayload): string {
 
 async function main() {
   const cloudflareToken = core.getInput('cf_token', { required: true });
+  const cloudflareAccount = core.getInput('cf_account', { required: true });
   const githubToken = core.getInput('github_token', { required: true });
+  const domainName = core.getInput('domain', { required: true });
   const projectPath = core.getInput('project_path');
 
   const teardown =
@@ -67,12 +74,12 @@ async function main() {
   }
   core.info(`Find PR number: ${prNumber}`);
 
-  const commentIfNotForkedRepo = (message: string) => {
+  const commentIfNotForkedRepo = async (message: string) => {
     // if it is forked repo, don't comment
     if (isFromForkedRepo) {
       return;
     }
-    comment({
+    await comment({
       repo: github.context.repo,
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       number: prNumber!,
@@ -82,10 +89,10 @@ async function main() {
     });
   };
 
-  fail = (err: Error) => {
+  fail = async (err: Error) => {
     core.info('error message:');
     core.info(JSON.stringify(err, null, 2));
-    commentIfNotForkedRepo(`
+    await commentIfNotForkedRepo(`
 😭 Deploy PR Preview ${gitCommitSha} failed. [Build logs](https://github.com/${
       github.context.repo.owner
     }/${github.context.repo.repo}/actions/runs/${github.context.runId})
@@ -103,9 +110,8 @@ ${getCommentFooter()}
     }
   };
 
-  const repoOwner = github.context.repo.owner.replace(/\./g, '-');
-  const repoName = github.context.repo.repo.replace(/\./g, '-');
-  const url = `${repoOwner}-${repoName}-${job}-pr-${prNumber}.surge.sh`;
+  const environment = `${job}-pr-${prNumber}`;
+  const url = `${environment}.${domainName}`;
 
   core.setOutput('preview_url', url);
 
@@ -141,11 +147,10 @@ ${getCommentFooter()}
     try {
       core.info(`Teardown: ${url}`);
       core.setSecret(cloudflareToken);
-      await execSurgeCommand({
-        command: ['surge', 'teardown', url, `--token`, cloudflareToken],
-      });
 
-      return commentIfNotForkedRepo(`
+      await wranglerTeardown(cloudflareAccount, cloudflareToken, environment);
+
+      return await commentIfNotForkedRepo(`
 :recycle: [PR Preview](https://${url}) ${gitCommitSha} has been successfully destroyed since this PR has been closed.
 
 ${formatImage({
@@ -161,8 +166,8 @@ ${getCommentFooter()}
     }
   }
 
-  commentIfNotForkedRepo(`
-⚡️ Deploying PR Preview ${gitCommitSha} to [surge.sh](https://${url}) ... [Build logs](${buildingLogUrl})
+  await commentIfNotForkedRepo(`
+⚡️ Deploying PR Preview ${gitCommitSha} to [workers.dev](https://${url}) ... [Build logs](${buildingLogUrl})
 
 ${formatImage({
   buildingLogUrl,
@@ -190,11 +195,9 @@ ${getCommentFooter()}
     core.info(`Deploy to ${url}`);
     core.setSecret(cloudflareToken);
 
-    await execSurgeCommand({
-      command: ['surge', `./${projectPath}`, url, `--token`, cloudflareToken],
-    });
+    await wranglerPublish(projectPath, cloudflareToken, environment);
 
-    commentIfNotForkedRepo(`
+    await commentIfNotForkedRepo(`
 🎊 PR Preview ${gitCommitSha} has been successfully built and deployed to https://${url}
 
 :clock1: Build time: **${duration}s**
