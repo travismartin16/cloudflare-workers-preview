@@ -152,7 +152,7 @@ const wranglerPublish = (workingDirectory, environment, cloudflareAccount, cfApi
     yield exec_1.exec('echo', [`'[env.${environment}]'`, '>>', './wrangler.toml'], {
         cwd: workingDirectory,
     });
-    yield exec_1.exec('echo', [`'name = ${environment}'`, '>>', './wrangler.toml'], {
+    yield exec_1.exec('echo', [`'name = "${environment}"'`, '>>', './wrangler.toml'], {
         cwd: workingDirectory,
     });
     yield exports.execNpxCommand({
