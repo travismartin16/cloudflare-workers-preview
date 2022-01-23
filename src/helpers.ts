@@ -30,10 +30,10 @@ export const wranglerPublish = async (
   cfApiToken: string,
 ) => {
   const wrangler = '@cloudflare/wrangler';
-  await exec('echo', [`[env.${environment}]`, '>>', './wrangler.toml'], {
+  await exec('echo', [`'[env.${environment}]'`, '>>', './wrangler.toml'], {
     cwd: workingDirectory,
   });
-  await exec('echo', [`name = ${environment}`, '>>', './wrangler.toml'], {
+  await exec('echo', [`'name = ${environment}'`, '>>', './wrangler.toml'], {
     cwd: workingDirectory,
   });
   await execNpxCommand({
