@@ -1,12 +1,11 @@
 {
   "name": "cloudflare-workers-preview",
-  "version": "1.6.0",
-  "private": true,
-  "description": "Preview website in surge.sh for every pull request",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Preview cloudflare workers for every pull request",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
-    "build-preview": "node ./utils/gen-preview.js",
     "format": "prettier --write **/*.ts",
     "format-check": "prettier --check **/*.ts",
     "lint": "eslint src/**/*.ts",
@@ -22,7 +21,9 @@
   },
   "keywords": [
     "actions",
-    "surge",
+    "cloudflare",
+    "workers",
+    "wrangler",
     "preview",
     "pull-requests",
     "deploy"
