@@ -147,14 +147,21 @@ const execNpxCommand = ({ command, options, }) => __awaiter(void 0, void 0, void
     }
 });
 exports.execNpxCommand = execNpxCommand;
-const wranglerPublish = (workingDirectory, cfApiToken, environment) => __awaiter(void 0, void 0, void 0, function* () {
+const wranglerPublish = (workingDirectory, environment, cloudflareAccount, cfApiToken) => __awaiter(void 0, void 0, void 0, function* () {
     const wrangler = '@cloudflare/wrangler';
+    yield exec_1.exec('echo', [`[env.${environment}]`, '>>', './wrangler.toml'], {
+        cwd: workingDirectory,
+    });
+    yield exec_1.exec('echo', [`name = ${environment}`, '>>', './wrangler.toml'], {
+        cwd: workingDirectory,
+    });
     yield exports.execNpxCommand({
         command: [wrangler, 'publish', '-e', environment],
         options: {
             cwd: workingDirectory,
             env: {
                 CF_API_TOKEN: cfApiToken,
+                CF_ACCOUNT_ID: cloudflareAccount,
             },
         },
     });
@@ -372,7 +379,7 @@ ${helpers_1.getCommentFooter()}
             core.info(`Build time: ${duration} seconds`);
             core.info(`Deploy to ${url}`);
             core.setSecret(cloudflareToken);
-            yield helpers_1.wranglerPublish(projectPath, cloudflareToken, environment);
+            yield helpers_1.wranglerPublish(projectPath, environment, cloudflareAccount, cloudflareToken);
             yield commentIfNotForkedRepo(`
 🎊 PR Preview ${gitCommitSha} has been successfully built and deployed to https://${url}
 
