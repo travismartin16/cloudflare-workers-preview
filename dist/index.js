@@ -149,16 +149,13 @@ const execNpxCommand = ({ command, options, }) => __awaiter(void 0, void 0, void
 exports.execNpxCommand = execNpxCommand;
 const wranglerPublish = (workingDirectory, environment, cloudflareAccount, cfApiToken) => __awaiter(void 0, void 0, void 0, function* () {
     const wrangler = '@cloudflare/wrangler';
-    yield exec_1.exec('pwd', [], {
+    // Add new environment config to wrangler config file.
+    // [env.preview-job-pr-123]
+    // name = "env.preview-job-pr-123"
+    yield exec_1.exec('sed', ['-i', '-e', `$a[env.${environment}]`, './wrangler.toml'], {
         cwd: workingDirectory,
     });
-    yield exec_1.exec('echo', [`'[env.${environment}]'`, '>>', './wrangler.toml'], {
-        cwd: workingDirectory,
-    });
-    yield exec_1.exec('echo', [`'name = "${environment}"'`, '>>', './wrangler.toml'], {
-        cwd: workingDirectory,
-    });
-    yield exec_1.exec('cat', ['./wrangler.toml'], {
+    yield exec_1.exec('sed', ['-i', '-e', `$aname = "${environment}"`, './wrangler.toml'], {
         cwd: workingDirectory,
     });
     yield exports.execNpxCommand({

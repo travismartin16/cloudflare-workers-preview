@@ -30,19 +30,21 @@ export const wranglerPublish = async (
   cfApiToken: string,
 ) => {
   const wrangler = '@cloudflare/wrangler';
-  await exec('pwd', [], {
-    cwd: workingDirectory,
-  });
 
-  await exec('echo', [`'[env.${environment}]'`, '>>', './wrangler.toml'], {
+  // Add new environment config to wrangler config file.
+  // [env.preview-job-pr-123]
+  // name = "env.preview-job-pr-123"
+  await exec('sed', ['-i', '-e', `$a[env.${environment}]`, './wrangler.toml'], {
     cwd: workingDirectory,
   });
-  await exec('echo', [`'name = "${environment}"'`, '>>', './wrangler.toml'], {
-    cwd: workingDirectory,
-  });
-  await exec('cat', ['./wrangler.toml'], {
-    cwd: workingDirectory,
-  });
+  await exec(
+    'sed',
+    ['-i', '-e', `$aname = "${environment}"`, './wrangler.toml'],
+    {
+      cwd: workingDirectory,
+    },
+  );
+
   await execNpxCommand({
     command: [wrangler, 'publish', '-e', environment],
     options: {
