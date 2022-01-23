@@ -41,6 +41,7 @@ export const wranglerPublish = async (
     options: {
       cwd: workingDirectory,
       env: {
+        ...process.env,
         CF_API_TOKEN: cfApiToken,
         CF_ACCOUNT_ID: cloudflareAccount,
       },

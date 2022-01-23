@@ -159,10 +159,7 @@ const wranglerPublish = (workingDirectory, environment, cloudflareAccount, cfApi
         command: [wrangler, 'publish', '-e', environment],
         options: {
             cwd: workingDirectory,
-            env: {
-                CF_API_TOKEN: cfApiToken,
-                CF_ACCOUNT_ID: cloudflareAccount,
-            },
+            env: Object.assign(Object.assign({}, process.env), { CF_API_TOKEN: cfApiToken, CF_ACCOUNT_ID: cloudflareAccount }),
         },
     });
 });
