@@ -1,5 +1,5 @@
-name: 'Workers Preview'
-description: 'Cloudflare workers preview for every pull requests'
+name: 'Cloudflare Workers Preview'
+description: 'Deploy Cloudflare workers preview for every pull request with Wrangler'
 author: 'shidil'
 inputs:
   cf_token:
